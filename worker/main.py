@@ -106,15 +106,24 @@ def callback(message):
         private_key = load_private_key(PRIVATE_KEY_PATH)
         decrypted_bytes = decrypt_data(json.dumps(inner_payload), private_key)
 
+        # create output directory if it doesn't exist
+        if not os.path.exists('output'):
+            os.makedirs('output')
+
         if decrypted_bytes:
             print(f"--- NEW {note_type.upper()} NOTE ---")
             if note_type == 'text':
                     print(f"Content: {decrypted_bytes.decode('utf-8')}")
+                    # save to file
+                    filename = f"output/received_text_{int(time.time())}.txt"
+                    with open(filename, "wb") as f:
+                        f.write(decrypted_bytes)
+                    print(f"Saved text to {filename}")
             elif note_type == 'audio':
                     # Audio is base64 encoded inside the encrypted data
                     audio_b64 = decrypted_bytes.decode('utf-8')
                     audio_bytes = base64.b64decode(audio_b64)
-                    filename = f"received_audio_{int(time.time())}.m4a"
+                    filename = f"output/received_audio_{int(time.time())}.m4a"
                     with open(filename, "wb") as f:
                         f.write(audio_bytes)
                     print(f"Saved audio to {filename}")
