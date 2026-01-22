@@ -14,6 +14,9 @@ export default function AudioScreen({ navigation }: Props) {
     const [permissionResponse, requestPermission] = Audio.usePermissions();
     const [isRecording, setIsRecording] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [recordedUri, setRecordedUri] = useState<string | null>(null);
+    const [sound, setSound] = useState<Audio.Sound | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
     const [duration, setDuration] = useState('00:00');
 
     useEffect(() => {
@@ -22,8 +25,11 @@ export default function AudioScreen({ navigation }: Props) {
             if (recording) {
                 recording.stopAndUnloadAsync();
             }
+            if (sound) {
+                sound.unloadAsync();
+            }
         };
-    }, []);
+    }, [recording, sound]);
 
     // Simple timer effect
     useEffect(() => {
@@ -37,14 +43,22 @@ export default function AudioScreen({ navigation }: Props) {
                 const sec = s % 60;
                 setDuration(`${m < 10 ? '0' + m : m}:${sec < 10 ? '0' + sec : sec}`);
             }, 1000);
-        } else {
+        } else if (!recordedUri) {
             setDuration('00:00');
         }
         return () => clearInterval(interval);
-    }, [isRecording]);
+    }, [isRecording, recordedUri]);
 
     async function startRecording() {
         try {
+            // Reset state
+            setRecordedUri(null);
+            if (sound) {
+                await sound.unloadAsync();
+                setSound(null);
+            }
+            setIsPlaying(false);
+
             if (permissionResponse?.status !== 'granted') {
                 const resp = await requestPermission();
                 if (resp.status !== 'granted') return;
@@ -67,26 +81,58 @@ export default function AudioScreen({ navigation }: Props) {
     }
 
     async function stopRecording() {
-        setIsRecording(false);
         if (!recording) return;
-
-        await recording.stopAndUnloadAsync();
-        await Audio.setAudioModeAsync({
-            allowsRecordingIOS: false,
-        });
-
-        // Auto send
-        const uri = recording.getURI();
-        if (uri) {
-            sendAudio(uri);
+        setIsRecording(false);
+        try {
+            await recording.stopAndUnloadAsync();
+            const uri = recording.getURI();
+            if (uri) {
+                setRecordedUri(uri);
+            }
+            setRecording(null);
+            await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+        } catch (error) {
+            console.error('Failed to stop recording', error);
         }
-        setRecording(null);
     }
 
-    const sendAudio = async (uri: string) => {
+    async function playSound() {
+        if (!recordedUri) return;
+        try {
+            if (sound) {
+                await sound.unloadAsync();
+            }
+            const { sound: newSound } = await Audio.Sound.createAsync({ uri: recordedUri });
+            setSound(newSound);
+            setIsPlaying(true);
+
+            newSound.setOnPlaybackStatusUpdate((status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                    setIsPlaying(false);
+                }
+            });
+
+            await newSound.playAsync();
+        } catch (error) {
+            console.error('Failed to play sound', error);
+            Alert.alert('Error', 'Could not play audio');
+        }
+    }
+
+    async function handleRetake() {
+        setRecordedUri(null);
+        setDuration('00:00');
+        if (sound) {
+            await sound.unloadAsync();
+            setSound(null);
+        }
+    }
+
+    const sendAudio = async () => {
+        if (!recordedUri) return;
         setLoading(true);
         try {
-            await Uploader.uploadAudio(uri);
+            await Uploader.uploadAudio(recordedUri);
             Alert.alert('Success', 'Audio encrypted and sent securely.');
             navigation.goBack();
         } catch (error: any) {
@@ -115,21 +161,43 @@ export default function AudioScreen({ navigation }: Props) {
                     {loading ? (
                         <ActivityIndicator size="large" color="#00CEC9" />
                     ) : (
-                        <TouchableOpacity
-                            style={[styles.recordButton, isRecording ? styles.recording : null]}
-                            onPress={isRecording ? stopRecording : startRecording}
-                        >
-                            <Ionicons
-                                name={isRecording ? "stop" : "mic"}
-                                size={48}
-                                color="white"
-                            />
-                        </TouchableOpacity>
-                    )}
+                        <>
+                            {!recordedUri ? (
+                                <View style={{ alignItems: 'center' }}>
+                                    <TouchableOpacity
+                                        style={[styles.recordButton, isRecording ? styles.recording : null]}
+                                        onPress={isRecording ? stopRecording : startRecording}
+                                    >
+                                        <Ionicons
+                                            name={isRecording ? "stop" : "mic"}
+                                            size={48}
+                                            color="white"
+                                        />
+                                    </TouchableOpacity>
+                                    <Text style={styles.instruction}>
+                                        {isRecording ? 'Tap to Stop' : 'Tap to Record'}
+                                    </Text>
+                                </View>
+                            ) : (
+                                <View style={styles.reviewContainer}>
+                                    <TouchableOpacity style={styles.actionButton} onPress={playSound}>
+                                        <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="white" />
+                                        <Text style={styles.actionText}>{isPlaying ? "Playing..." : "Play Check"}</Text>
+                                    </TouchableOpacity>
 
-                    <Text style={styles.instruction}>
-                        {isRecording ? 'Tap to Stop & Send' : 'Tap to Record'}
-                    </Text>
+                                    <TouchableOpacity style={[styles.actionButton, styles.sendButton]} onPress={sendAudio}>
+                                        <Ionicons name="send" size={32} color="white" />
+                                        <Text style={styles.actionText}>Encrypt & Send</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity style={[styles.actionButton, styles.retakeButton]} onPress={handleRetake}>
+                                        <Ionicons name="trash" size={24} color="#FF5252" />
+                                        <Text style={[styles.actionText, { color: '#FF5252' }]}>Retake</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </>
+                    )}
                 </View>
             </View>
         </SafeAreaView>
@@ -199,5 +267,35 @@ const styles = StyleSheet.create({
         color: '#888',
         marginTop: 20,
         fontSize: 16,
+    },
+    reviewContainer: {
+        width: '100%',
+        alignItems: 'center',
+        gap: 20,
+    },
+    actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#333',
+        paddingVertical: 15,
+        paddingHorizontal: 30,
+        borderRadius: 30,
+        minWidth: 200,
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
+    sendButton: {
+        backgroundColor: '#0984E3',
+    },
+    retakeButton: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#FF5252',
+    },
+    actionText: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: '600',
+        marginLeft: 10,
     },
 });

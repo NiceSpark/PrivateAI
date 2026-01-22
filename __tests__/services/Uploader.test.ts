@@ -40,13 +40,43 @@ describe('Uploader', () => {
         }));
     });
 
-    it('should upload audio reading file as base64', async () => {
-        (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue('audio-base64');
+    it('should upload audio reading file via fetch', async () => {
+        // Mock fetch for the file read (first call) AND the upload (second call)
+        (global.fetch as jest.Mock)
+            .mockResolvedValueOnce({
+                blob: async () => ({
+                    // Mock blob implementation if needed by FileReader, 
+                    // but since FileReader is valid in JSDOM/Node environment with polyfills?
+                    // Jest environment usually doesn't have FileReader or Blob fully working without setup.
+                    // We might need to mock FileReader.
+                })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ status: 'success' }),
+            });
+
+        // Mock FileReader
+        const mockFileReader = {
+            readAsDataURL: jest.fn(),
+            result: 'data:audio/m4a;base64,audio-base64-content',
+            onloadend: null as any,
+            onerror: null as any,
+        };
+
+        // Use spyOn or just plain overwrite for the test scope if possible, 
+        // but global.FileReader is a constructor.
+        global.FileReader = jest.fn(() => mockFileReader) as any;
+
+        // Trigger the onloadend manually when readAsDataURL is called
+        mockFileReader.readAsDataURL.mockImplementation(() => {
+            if (mockFileReader.onloadend) mockFileReader.onloadend();
+        });
 
         await Uploader.uploadAudio('file://audio.m4a');
 
-        expect(FileSystem.readAsStringAsync).toHaveBeenCalledWith('file://audio.m4a', { encoding: 'base64' });
-        expect(global.fetch).toHaveBeenCalledWith('http://api.com', expect.objectContaining({
+        expect(global.fetch).toHaveBeenCalledTimes(2); // 1. read file, 2. upload
+        expect(global.fetch).toHaveBeenLastCalledWith('http://api.com', expect.objectContaining({
             method: 'POST',
             body: expect.stringContaining('"type":"audio"'),
         }));
