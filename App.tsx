@@ -8,7 +8,14 @@ import SettingsScreen from './screens/SettingsScreen';
 import TextScreen from './screens/TextScreen';
 import AudioScreen from './screens/AudioScreen';
 
-const Stack = createStackNavigator();
+export type RootStackParamList = {
+  Home: undefined;
+  Settings: undefined;
+  Text: undefined;
+  Audio: undefined;
+};
+
+const Stack = createStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (

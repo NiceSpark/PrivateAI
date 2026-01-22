@@ -3,7 +3,12 @@ import { View, TextInput, TouchableOpacity, Text, StyleSheet, SafeAreaView, Aler
 import { Ionicons } from '@expo/vector-icons';
 import { Uploader } from '../services/Uploader';
 
-export default function TextScreen({ navigation }) {
+import { StackScreenProps } from '@react-navigation/stack';
+import { RootStackParamList } from '../App';
+
+type Props = StackScreenProps<RootStackParamList, 'Text'>;
+
+export default function TextScreen({ navigation }: Props) {
     const [text, setText] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -16,7 +21,7 @@ export default function TextScreen({ navigation }) {
             Alert.alert('Success', 'Note encrypted and sent securelly.');
             setText('');
             navigation.goBack();
-        } catch (error) {
+        } catch (error: any) {
             Alert.alert('Error', error.message);
         } finally {
             setLoading(false);

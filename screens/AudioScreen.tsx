@@ -4,8 +4,13 @@ import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { Uploader } from '../services/Uploader';
 
-export default function AudioScreen({ navigation }) {
-    const [recording, setRecording] = useState(null);
+import { StackScreenProps } from '@react-navigation/stack';
+import { RootStackParamList } from '../App';
+
+type Props = StackScreenProps<RootStackParamList, 'Audio'>;
+
+export default function AudioScreen({ navigation }: Props) {
+    const [recording, setRecording] = useState<Audio.Recording | null>(null);
     const [permissionResponse, requestPermission] = Audio.usePermissions();
     const [isRecording, setIsRecording] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -22,7 +27,7 @@ export default function AudioScreen({ navigation }) {
 
     // Simple timer effect
     useEffect(() => {
-        let interval;
+        let interval: NodeJS.Timeout;
         if (isRecording) {
             const start = Date.now();
             interval = setInterval(() => {
@@ -40,7 +45,7 @@ export default function AudioScreen({ navigation }) {
 
     async function startRecording() {
         try {
-            if (permissionResponse.status !== 'granted') {
+            if (permissionResponse?.status !== 'granted') {
                 const resp = await requestPermission();
                 if (resp.status !== 'granted') return;
             }
@@ -72,17 +77,19 @@ export default function AudioScreen({ navigation }) {
 
         // Auto send
         const uri = recording.getURI();
-        sendAudio(uri);
+        if (uri) {
+            sendAudio(uri);
+        }
         setRecording(null);
     }
 
-    const sendAudio = async (uri) => {
+    const sendAudio = async (uri: string) => {
         setLoading(true);
         try {
             await Uploader.uploadAudio(uri);
             Alert.alert('Success', 'Audio encrypted and sent securely.');
             navigation.goBack();
-        } catch (error) {
+        } catch (error: any) {
             Alert.alert('Error', error.message);
         } finally {
             setLoading(false);

@@ -3,7 +3,7 @@ import { SettingsManager } from '../managers/SettingsManager';
 import * as FileSystem from 'expo-file-system';
 
 export const Uploader = {
-    uploadText: async (text) => {
+    uploadText: async (text: string): Promise<any> => {
         try {
             const publicKey = await SettingsManager.getPublicKey();
             const targetUrl = await SettingsManager.getTargetUrl();
@@ -31,13 +31,13 @@ export const Uploader = {
             }
 
             return await response.json();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload Text Error:', error);
             throw error;
         }
     },
 
-    uploadAudio: async (uri) => {
+    uploadAudio: async (uri: string): Promise<any> => {
         try {
             const publicKey = await SettingsManager.getPublicKey();
             const targetUrl = await SettingsManager.getTargetUrl();
@@ -48,7 +48,7 @@ export const Uploader = {
 
             // Read file as base64
             const fileContent = await FileSystem.readAsStringAsync(uri, {
-                encoding: FileSystem.EncodingType.Base64,
+                encoding: 'base64',
             });
 
             const encryptedPayload = await hybridEncrypt(fileContent, publicKey);
@@ -71,7 +71,7 @@ export const Uploader = {
             }
 
             return await response.json();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload Audio Error:', error);
             throw error;
         }

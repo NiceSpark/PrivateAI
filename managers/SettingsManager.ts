@@ -6,7 +6,7 @@ const KEYS = {
 };
 
 export const SettingsManager = {
-    savePublicKey: async (pem) => {
+    savePublicKey: async (pem: string): Promise<void> => {
         try {
             await AsyncStorage.setItem(KEYS.PUBLIC_KEY, pem);
         } catch (e) {
@@ -14,7 +14,7 @@ export const SettingsManager = {
         }
     },
 
-    getPublicKey: async () => {
+    getPublicKey: async (): Promise<string | null> => {
         try {
             return await AsyncStorage.getItem(KEYS.PUBLIC_KEY);
         } catch (e) {
@@ -23,7 +23,7 @@ export const SettingsManager = {
         }
     },
 
-    saveTargetUrl: async (url) => {
+    saveTargetUrl: async (url: string): Promise<void> => {
         try {
             await AsyncStorage.setItem(KEYS.TARGET_URL, url);
         } catch (e) {
@@ -31,7 +31,7 @@ export const SettingsManager = {
         }
     },
 
-    getTargetUrl: async () => {
+    getTargetUrl: async (): Promise<string | null> => {
         try {
             return await AsyncStorage.getItem(KEYS.TARGET_URL);
         } catch (e) {

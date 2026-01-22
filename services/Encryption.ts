@@ -12,7 +12,20 @@ import forge from 'node-forge';
  * @param {string} publicKeyPem - The RSA Public Key in PEM format.
  * @returns {Promise<{encryptedKey: string, iv: string, data: string}>} - Base64 encoded artifacts.
  */
-export const hybridEncrypt = async (data, publicKeyPem) => {
+export interface EncryptedPayload {
+    encryptedKey: string;
+    iv: string;
+    data: string;
+}
+
+/**
+ * Encrypts data using Hybrid Encryption (AES-GCM + RSA).
+ * ...
+ * @param {string} data - The plain text data to encrypt.
+ * @param {string} publicKeyPem - The RSA Public Key in PEM format.
+ * @returns {Promise<EncryptedPayload>} - Base64 encoded artifacts.
+ */
+export const hybridEncrypt = async (data: string, publicKeyPem: string): Promise<EncryptedPayload> => {
     try {
         // 1. Generate AES Key (32 bytes) and IV (12 bytes)
         // We can use forge for random bytes or expo-crypto. Forge is synchronous for this usually.

@@ -3,7 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Aler
 import { Ionicons } from '@expo/vector-icons';
 import { SettingsManager } from '../managers/SettingsManager';
 
-export default function SettingsScreen({ navigation }) {
+import { StackScreenProps } from '@react-navigation/stack';
+import { RootStackParamList } from '../App';
+
+type Props = StackScreenProps<RootStackParamList, 'Settings'>;
+
+export default function SettingsScreen({ navigation }: Props) {
     const [publicKey, setPublicKey] = useState('');
     const [targetUrl, setTargetUrl] = useState('');
 
@@ -89,7 +94,6 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: '#FFF',
         color: '#FFF',
     },
     headerRow: {

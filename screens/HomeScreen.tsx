@@ -4,7 +4,12 @@ import { Ionicons } from '@expo/vector-icons'; // Assuming Expo includes this
 
 const { width } = Dimensions.get('window');
 
-export default function HomeScreen({ navigation }) {
+import { StackScreenProps } from '@react-navigation/stack';
+import { RootStackParamList } from '../App';
+
+type Props = StackScreenProps<RootStackParamList, 'Home'>;
+
+export default function HomeScreen({ navigation }: Props) {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
