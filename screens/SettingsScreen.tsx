@@ -11,6 +11,7 @@ type Props = StackScreenProps<RootStackParamList, 'Settings'>;
 export default function SettingsScreen({ navigation }: Props) {
     const [publicKey, setPublicKey] = useState('');
     const [targetUrl, setTargetUrl] = useState('');
+    const [authSecret, setAuthSecret] = useState('');
 
     useEffect(() => {
         loadSettings();
@@ -19,14 +20,17 @@ export default function SettingsScreen({ navigation }: Props) {
     const loadSettings = async () => {
         const key = await SettingsManager.getPublicKey();
         const url = await SettingsManager.getTargetUrl();
+        const secret = await SettingsManager.getAuthSecret();
         if (key) setPublicKey(key);
         if (url) setTargetUrl(url);
+        if (secret) setAuthSecret(secret);
     };
 
     const saveSettings = async () => {
         await SettingsManager.savePublicKey(publicKey);
         await SettingsManager.saveTargetUrl(targetUrl);
-        Alert.alert('Success', 'Settings saved successfully');
+        await SettingsManager.saveAuthSecret(authSecret);
+        Alert.alert('Success', 'Configuration saved successfully');
         navigation.goBack();
     };
 
@@ -55,6 +59,20 @@ export default function SettingsScreen({ navigation }: Props) {
                             onChangeText={setTargetUrl}
                             autoCapitalize="none"
                             keyboardType="url"
+                            autoCorrect={false}
+                        />
+                    </View>
+
+                    <View style={styles.section}>
+                        <Text style={styles.label}>Auth Secret (API Key)</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Secret string matching Cloud Function Env"
+                            placeholderTextColor="#666"
+                            value={authSecret}
+                            onChangeText={setAuthSecret}
+                            secureTextEntry={true}
+                            autoCapitalize="none"
                         />
                     </View>
 

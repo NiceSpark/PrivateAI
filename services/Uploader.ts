@@ -7,6 +7,7 @@ export const Uploader = {
         try {
             const publicKey = await SettingsManager.getPublicKey();
             const targetUrl = await SettingsManager.getTargetUrl();
+            const authSecret = await SettingsManager.getAuthSecret();
 
             if (!publicKey || !targetUrl) {
                 throw new Error('Missing configuration: Public Key or Target URL');
@@ -14,11 +15,16 @@ export const Uploader = {
 
             const encryptedPayload = await hybridEncrypt(text, publicKey);
 
+            const headers: any = {
+                'Content-Type': 'application/json',
+            };
+            if (authSecret) {
+                headers['X-Auth-Secret'] = authSecret;
+            }
+
             const response = await fetch(targetUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify({
                     type: 'text',
                     payload: encryptedPayload,
@@ -41,6 +47,7 @@ export const Uploader = {
         try {
             const publicKey = await SettingsManager.getPublicKey();
             const targetUrl = await SettingsManager.getTargetUrl();
+            const authSecret = await SettingsManager.getAuthSecret();
 
             if (!publicKey || !targetUrl) {
                 throw new Error('Missing configuration: Public Key or Target URL');
@@ -53,11 +60,16 @@ export const Uploader = {
 
             const encryptedPayload = await hybridEncrypt(fileContent, publicKey);
 
+            const headers: any = {
+                'Content-Type': 'application/json',
+            };
+            if (authSecret) {
+                headers['X-Auth-Secret'] = authSecret;
+            }
+
             const response = await fetch(targetUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify({
                     type: 'audio',
                     payload: encryptedPayload,

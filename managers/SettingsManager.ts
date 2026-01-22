@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const KEYS = {
     PUBLIC_KEY: 'privateai_public_key',
     TARGET_URL: 'privateai_target_url',
+    AUTH_SECRET: 'privateai_auth_secret',
 };
 
 export const SettingsManager = {
@@ -36,6 +37,23 @@ export const SettingsManager = {
             return await AsyncStorage.getItem(KEYS.TARGET_URL);
         } catch (e) {
             console.error('Failed to load target url', e);
+            return null;
+        }
+    },
+
+    saveAuthSecret: async (secret: string): Promise<void> => {
+        try {
+            await AsyncStorage.setItem(KEYS.AUTH_SECRET, secret);
+        } catch (e) {
+            console.error('Failed to save auth secret', e);
+        }
+    },
+
+    getAuthSecret: async (): Promise<string | null> => {
+        try {
+            return await AsyncStorage.getItem(KEYS.AUTH_SECRET);
+        } catch (e) {
+            console.error('Failed to load auth secret', e);
             return null;
         }
     },
