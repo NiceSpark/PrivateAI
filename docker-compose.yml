@@ -1,0 +1,133 @@
+services:
+
+  # --- Intelligence Layer ---
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    volumes:
+      - ./ollama/models:/root/.ollama
+    networks:
+      - ai_net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  reranker:
+    image: ghcr.io/huggingface/text-embeddings-inference:1.6
+    container_name: reranker
+    restart: unless-stopped
+    command: --model-id BAAI/bge-reranker-v2-m3 --port 80
+    volumes:
+      - ./reranker:/data
+    networks:
+      - ai_net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  reranker-proxy:
+    build: ./reranker-proxy
+    container_name: reranker-proxy
+    restart: unless-stopped
+    environment:
+      - RERANKER_URL=http://reranker:80
+    ports:
+      - "8081:8080"
+    depends_on:
+      - reranker
+    networks:
+      - ai_net
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      # Enable Web Search via SearXNG
+      - ENABLE_RAG_WEB_SEARCH=true
+      - RAG_WEB_SEARCH_ENGINE=searxng
+      - RAG_WEB_SEARCH_RESULT_COUNT=3
+      - SEARXNG_QUERY_URL=http://searxng:8080/search?q=<query>
+      - WEBUI_SECRET_KEY=t0p_s3cr3t_changeme_via_agent
+    volumes:
+      - ./open-webui/data:/app/backend/data
+    ports:
+      - "127.0.0.1:3000:8080" # Localhost only, exposed via Tailscale
+    depends_on:
+      - ollama
+      - searxng
+    networks:
+      - ai_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    networks:
+      - ai_net
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+
+  # --- Automation Layer ---
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      - GENERIC_TIMEZONE=Europe/Paris
+      - TZ=Europe/Paris
+      - N8N_SECURE_COOKIE=false
+      # CRITICAL: Polling required for bind mount triggers on fscrypt
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_FUNCTION_ALLOW_EXTERNAL=socket,child_process
+      - WEBHOOK_URL=https://your-tailscale-domain.ts.net/n8n/
+    volumes:
+      - ./n8n/data:/home/node/.n8n
+      - ./n8n/files:/home/node/files
+    ports:
+      - "127.0.0.1:5678:5678"
+    networks:
+      - ai_net
+
+  # --- Networking Layer ---
+  # Tailscale runs as a sidecar to provide ingress
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    hostname: ai-brick
+    environment:
+      - TS_AUTHKEY="tskey-auth-kE78LBmYwE11CNTRL-rhgQq2KgfBSdwkb43uxyBSDTuUH6Fmt1"
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+    volumes:
+      - ./tailscale/state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    restart: unless-stopped
+    networks:
+      - ai_net
+
+networks:
+  ai_net:
+    driver: bridge
